@@ -4,10 +4,11 @@ import { doc, deleteDoc } from "firebase/firestore";
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    // ✅ Await params in Next.js 15+
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: "Missing ID" }, { status: 400 });
