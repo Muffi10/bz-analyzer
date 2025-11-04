@@ -297,7 +297,7 @@ export default function ReportsPage() {
                     <div className="border-t pt-4">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Top Expense Categories</h4>
                       {Object.entries(expensesByCategory)
-                        .sort(([,a], [,b]) => b - a)
+                        .sort(([,a], [,b]) => (b as number) - (a as number))
                         .slice(0, 3)
                         .map(([category, amount]) => (
                           <div key={category} className="flex justify-between items-center p-2">
