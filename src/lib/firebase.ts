@@ -1,7 +1,12 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+
+console.log("🔥 Initializing Firebase...");
+console.log("🌍 Environment:", process.env.NODE_ENV);
+console.log("📍 API Key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+console.log("📍 Project ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,11 +18,27 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// ✅ Initialize Firebase only once - prevents duplicate app error
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+console.log("⚙️ Firebase config loaded (keys hidden for security)");
 
-// ✅ Export initialized services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+console.log("✅ Firebase app initialized:", app.name);
 
+const auth = getAuth(app);
+console.log("🔐 Auth instance created");
+
+if (typeof window !== 'undefined') {
+  console.log("💾 Setting auth persistence to LOCAL");
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log("✅ Auth persistence set successfully");
+    })
+    .catch((error) => {
+      console.error("❌ Auth persistence error:", error);
+    });
+}
+
+const db = getFirestore(app);
+console.log("📦 Firestore instance created");
+
+export { auth, db };
 export default app;
