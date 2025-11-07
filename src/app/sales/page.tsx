@@ -26,7 +26,8 @@ export default function SalesPage() {
   const [showStockWarning, setShowStockWarning] = useState(false);
   const [stockWarningData, setStockWarningData] = useState({ product: "", available: 0, requested: 0 });
   
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {

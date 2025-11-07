@@ -343,7 +343,7 @@ export default function ExpensesPage() {
                           <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getCategoryColor(cat)}`}>
                             {cat}
                           </span>
-                          <span className="font-semibold text-red-600">₹{total.toFixed(2)}</span>
+                          <span className="font-semibold text-red-600">₹{(total as number).toFixed(2)}</span>
                         </div>
                       ))
                     }
