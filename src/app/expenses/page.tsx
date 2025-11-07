@@ -337,7 +337,7 @@ export default function ExpensesPage() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {Object.entries(categoryTotals)
-                      .sort(([,a], [,b]) => b - a)
+                      .sort(([,a], [,b]) => (b as number) - (a as number))
                       .map(([cat, total]) => (
                         <div key={cat} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getCategoryColor(cat)}`}>
