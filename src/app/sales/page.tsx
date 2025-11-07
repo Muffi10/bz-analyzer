@@ -689,4 +689,4 @@ export default function SalesPage() {
       </div>
     </ProtectedRoute>
   );
-}
+}//hocus pocus fuck you

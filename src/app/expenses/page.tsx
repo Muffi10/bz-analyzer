@@ -356,4 +356,4 @@ export default function ExpensesPage() {
       </div>
     </ProtectedRoute>
   );
-}
+}//hocus pocus f you
