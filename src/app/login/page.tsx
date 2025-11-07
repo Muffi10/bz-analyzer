@@ -14,29 +14,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   setError("");
   setIsLoading(true);
 
   try {
-    console.log("🔐 Attempting login via API...");
-    
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    console.log("🔐 Signing in directly with Firebase...");
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Login failed");
-    }
-
-    console.log("✅ Login successful");
-    console.log("🔄 Redirecting to dashboard...");
-    router.push("/");
+    console.log("✅ Login successful:", userCredential.user.email);
+    router.push("/"); // or dashboard
   } catch (err: any) {
     console.error("❌ Login error:", err);
     setError(err.message || "Login failed");
