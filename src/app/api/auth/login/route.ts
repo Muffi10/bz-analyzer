@@ -1,3 +1,4 @@
+//api/auth/login/route.ts
 import { NextResponse } from "next/server";
 import { signInWithEmailAndPassword, auth } from "@/lib/firebaseAuth";
 import { getIdToken } from "firebase/auth";

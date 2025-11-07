@@ -1,3 +1,4 @@
+//api/stocks/update/[id]/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
