@@ -1,27 +1,122 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, getDocs, orderBy, query, deleteDoc, doc } from "firebase/firestore";
-import { Plus, Trash2, TrendingUp, LogOut, ArrowLeft, IndianRupee, Users, CreditCard, Smartphone } from "lucide-react";
+import { collection, addDoc, getDocs, orderBy, query, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { Plus, Trash2, TrendingUp, LogOut, ArrowLeft, IndianRupee, Users, CreditCard, Smartphone, Search, Calendar, Package } from "lucide-react";
 
 export default function SalesPage() {
   const router = useRouter();
   const [sales, setSales] = useState<any[]>([]);
+  const [stocks, setStocks] = useState<any[]>([]);
   const [product, setProduct] = useState("");
   const [quantity, setQuantity] = useState("");
   const [actualPrice, setActualPrice] = useState("");
   const [soldPrice, setSoldPrice] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [customer, setCustomer] = useState("");
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<any>(null);
+  const [showStockWarning, setShowStockWarning] = useState(false);
+  const [stockWarningData, setStockWarningData] = useState({ product: "", available: 0, requested: 0 });
+  
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
+  };
+
+  // Fetch stocks for search functionality
+  const fetchStocks = async () => {
+    try {
+      const q = query(collection(db, "stocks"), orderBy("product", "asc"));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((doc) => ({ 
+        id: doc.id, 
+        ...doc.data()
+      }));
+      setStocks(data);
+    } catch (error) {
+      console.error("Error fetching stocks:", error);
+    }
+  };
+
+  // Search products with debouncing
+  const handleProductSearch = (searchTerm: string) => {
+    setProduct(searchTerm);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchTerm.length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setSelectedStock(null);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      const filtered = stocks.filter(stock =>
+        stock.product.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setSearchResults(filtered);
+      setShowDropdown(filtered.length > 0);
+    }, 300);
+  };
+
+  // Select product from dropdown
+  const handleSelectProduct = (stock: any) => {
+    setProduct(stock.product);
+    setActualPrice(stock.costPrice.toString());
+    setSelectedStock(stock);
+    setShowDropdown(false);
+  };
+
+  // Check stock availability before sale
+  const checkStockAvailability = () => {
+    if (!selectedStock || !quantity) return true;
+
+    const requestedQty = parseFloat(quantity);
+    const availableQty = selectedStock.quantity;
+
+    if (requestedQty > availableQty) {
+      setStockWarningData({
+        product: selectedStock.product,
+        available: availableQty,
+        requested: requestedQty
+      });
+      setShowStockWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Update stock quantity after sale
+  const updateStockQuantity = async (stockId: string, soldQuantity: number) => {
+    try {
+      const stockRef = doc(db, "stocks", stockId);
+      const stock = stocks.find(s => s.id === stockId);
+      
+      if (stock) {
+        const newQuantity = stock.quantity - soldQuantity;
+        await updateDoc(stockRef, {
+          quantity: newQuantity
+        });
+        // Refresh stocks data
+        fetchStocks();
+      }
+    } catch (error) {
+      console.error("Error updating stock:", error);
+    }
   };
 
   // Add sale record
@@ -29,10 +124,19 @@ export default function SalesPage() {
     e.preventDefault();
     if (!product || !quantity || !actualPrice || !soldPrice) return;
 
+    // Check stock availability
+    if (!checkStockAvailability()) {
+      return;
+    }
+
     setIsLoading(true);
     const profit = (parseFloat(soldPrice) - parseFloat(actualPrice)) * parseFloat(quantity);
 
     try {
+      // Create timestamp from selected date
+      const saleTimestamp = new Date(saleDate);
+      saleTimestamp.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds());
+
       await addDoc(collection(db, "sales"), {
         product: product.trim(),
         quantity: parseFloat(quantity),
@@ -41,14 +145,68 @@ export default function SalesPage() {
         paymentMode,
         customer: customer.trim() || "Walk-in Customer",
         profit,
-        timestamp: new Date(),
+        timestamp: saleTimestamp,
       });
 
+      // Update stock quantity if product is from stock
+      if (selectedStock) {
+        await updateStockQuantity(selectedStock.id, parseFloat(quantity));
+      }
+
+      // Reset form
       setProduct("");
       setQuantity("");
       setActualPrice("");
       setSoldPrice("");
       setCustomer("");
+      setSelectedStock(null);
+      setSaleDate(new Date().toISOString().split('T')[0]);
+      fetchSales();
+    } catch (error) {
+      console.error("Error adding sale:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle sale with insufficient stock
+  const handleProceedWithSale = async () => {
+    setShowStockWarning(false);
+    setIsLoading(true);
+    const profit = (parseFloat(soldPrice) - parseFloat(actualPrice)) * parseFloat(quantity);
+
+    try {
+      const saleTimestamp = new Date(saleDate);
+      saleTimestamp.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds());
+
+      await addDoc(collection(db, "sales"), {
+        product: product.trim(),
+        quantity: parseFloat(quantity),
+        actualPrice: parseFloat(actualPrice),
+        soldPrice: parseFloat(soldPrice),
+        paymentMode,
+        customer: customer.trim() || "Walk-in Customer",
+        profit,
+        timestamp: saleTimestamp,
+      });
+
+      // Update stock to zero if selling more than available
+      if (selectedStock) {
+        const stockRef = doc(db, "stocks", selectedStock.id);
+        await updateDoc(stockRef, {
+          quantity: 0
+        });
+        fetchStocks();
+      }
+
+      // Reset form
+      setProduct("");
+      setQuantity("");
+      setActualPrice("");
+      setSoldPrice("");
+      setCustomer("");
+      setSelectedStock(null);
+      setSaleDate(new Date().toISOString().split('T')[0]);
       fetchSales();
     } catch (error) {
       console.error("Error adding sale:", error);
@@ -81,8 +239,21 @@ export default function SalesPage() {
     setSales(data);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     fetchSales();
+    fetchStocks();
   }, []);
 
   // Calculate statistics
@@ -198,18 +369,74 @@ export default function SalesPage() {
                 </h2>
 
                 <form onSubmit={handleAddSale} className="space-y-4">
+                  {/* Date Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sale Date
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={saleDate}
+                        onChange={(e) => setSaleDate(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-gray-900 bg-white"
+                        required
+                      />
+                      <Calendar className="absolute right-3 top-3.5 h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+
+                  {/* Product Search with Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Product Name
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Enter product name"
-                      value={product}
-                      onChange={(e) => setProduct(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-gray-900 placeholder-gray-500"
-                      required
-                    />
+                    <div className="relative" ref={dropdownRef}>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search or enter product name"
+                          value={product}
+                          onChange={(e) => handleProductSearch(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-gray-900 placeholder-gray-500"
+                          required
+                        />
+                        <Search className="absolute right-3 top-3.5 h-4 w-4 text-gray-400" />
+                      </div>
+                      
+                      {/* Search Dropdown */}
+                      {showDropdown && searchResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                          {searchResults.map((stock) => (
+                            <div
+                              key={stock.id}
+                              onClick={() => handleSelectProduct(stock)}
+                              className="flex items-center justify-between p-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div>
+                                <div className="font-medium text-gray-900">{stock.product}</div>
+                                <div className="text-sm text-gray-500">
+                                  Available: {stock.quantity} {stock.unit} • ₹{stock.costPrice}/unit
+                                </div>
+                              </div>
+                              <Package className="h-4 w-4 text-green-600" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Stock Info */}
+                    {selectedStock && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-blue-700 font-medium">Stock Info:</span>
+                          <span className="text-blue-600">
+                            {selectedStock.quantity} {selectedStock.unit} available
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -375,6 +602,7 @@ export default function SalesPage() {
                               {item.timestamp.toLocaleDateString('en-IN', {
                                 day: '2-digit',
                                 month: 'short',
+                                year: 'numeric'
                               })}
                               <br />
                               <span className="text-xs">
@@ -411,6 +639,52 @@ export default function SalesPage() {
             </div>
           </div>
         </div>
+
+        {/* Stock Warning Modal */}
+        {showStockWarning && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <Package className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Insufficient Stock</h3>
+                  <p className="text-sm text-gray-600">Stock availability warning</p>
+                </div>
+              </div>
+              
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                <p className="text-red-800 text-sm">
+                  Only <strong>{stockWarningData.available}</strong> units of <strong>"{stockWarningData.product}"</strong> available in stock, but you're trying to sell <strong>{stockWarningData.requested}</strong> units.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowStockWarning(false)}
+                  className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-gray-600 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleProceedWithSale}
+                  disabled={isLoading}
+                  className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-t-2 border-white border-solid rounded-full animate-spin"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    "Proceed Anyway"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );

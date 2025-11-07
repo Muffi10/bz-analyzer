@@ -3,10 +3,6 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-console.log("🔥 Initializing Firebase...");
-console.log("🌍 Environment:", process.env.NODE_ENV);
-console.log("📍 API Key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-console.log("📍 Project ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -18,13 +14,11 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-console.log("⚙️ Firebase config loaded (keys hidden for security)");
-
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-console.log("✅ Firebase app initialized:", app.name);
+
 
 const auth = getAuth(app);
-console.log("🔐 Auth instance created");
+
 
 if (typeof window !== 'undefined') {
   console.log("💾 Setting auth persistence to LOCAL");
@@ -38,7 +32,6 @@ if (typeof window !== 'undefined') {
 }
 
 const db = getFirestore(app);
-console.log("📦 Firestore instance created");
 
 export { auth, db };
 export default app;

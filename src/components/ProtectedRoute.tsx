@@ -12,10 +12,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   useEffect(() => {
-    console.log("🔐 ProtectedRoute: Component mounted");
-    console.log("📍 Current pathname:", pathname);
-    console.log("🔥 Firebase auth object:", auth);
-    console.log("👤 Auth currentUser:", auth.currentUser);
+    
 
     const timeout = setTimeout(() => {
       console.log("⏰ Timeout reached (5s) - still loading:", loading, "user:", user);
@@ -26,10 +23,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     }, 5000);
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log("🔔 onAuthStateChanged triggered");
-      console.log("👤 Current user:", currentUser);
-      console.log("📧 User email:", currentUser?.email);
-      console.log("🆔 User UID:", currentUser?.uid);
+      
       
       clearTimeout(timeout);
       setUser(currentUser);
@@ -48,16 +42,16 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     });
 
     return () => {
-      console.log("🧹 Cleaning up ProtectedRoute");
+      
       unsubscribe();
       clearTimeout(timeout);
     };
   }, [router, pathname, loading, user]);
 
-  console.log("🎨 Rendering ProtectedRoute - loading:", loading, "user:", !!user);
+  
 
   if (loading) {
-    console.log("⏳ Showing loading state");
+    
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
         <div className="text-center">
