@@ -7,6 +7,7 @@ import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Plus, Trash2, Package, LogOut, ArrowLeft } from "lucide-react";
+import { getUserCollection } from "@/lib/dbHelper";
 
 export default function StocksPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function StocksPage() {
 
     setIsLoading(true);
     try {
-      await addDoc(collection(db, "stocks"), {
+      await addDoc(getUserCollection("stocks"), {
         product: product.trim(),
         quantity: parseFloat(quantity),
         unit,
@@ -51,7 +52,7 @@ export default function StocksPage() {
   const handleDeleteStock = async (id: string) => {
     if (confirm("Are you sure you want to delete this stock item?")) {
       try {
-        await deleteDoc(doc(db, "stocks", id));
+        await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/stocks`, id));
         fetchStocks();
       } catch (error) {
         console.error("Error deleting stock:", error);
@@ -61,7 +62,7 @@ export default function StocksPage() {
 
   // Fetch stock items
   const fetchStocks = async () => {
-    const snapshot = await getDocs(collection(db, "stocks"));
+    const snapshot = await getDocs(getUserCollection("stocks"));
     const data = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
       ...doc.data(),
@@ -104,13 +105,6 @@ export default function StocksPage() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
           </div>
         </nav>
 

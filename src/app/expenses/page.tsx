@@ -7,6 +7,7 @@ import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, orderBy, query, deleteDoc, doc } from "firebase/firestore";
 import { Plus, Trash2, DollarSign, LogOut, ArrowLeft, PieChart, AlertCircle } from "lucide-react";
+import { getUserCollection } from "@/lib/dbHelper";
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function ExpensesPage() {
 
     setIsLoading(true);
     try {
-      await addDoc(collection(db, "expenses"), {
+      await addDoc(getUserCollection("expenses"), {
         category: category.trim(),
         amount: parseFloat(amount),
         description: description.trim() || "No description",
@@ -54,7 +55,7 @@ export default function ExpensesPage() {
   const handleDeleteExpense = async (id: string) => {
     if (confirm("Are you sure you want to delete this expense?")) {
       try {
-        await deleteDoc(doc(db, "expenses", id));
+        await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/expenses`, id));
         fetchExpenses();
       } catch (error) {
         console.error("Error deleting expense:", error);
@@ -64,7 +65,7 @@ export default function ExpensesPage() {
 
   // Fetch expenses
   const fetchExpenses = async () => {
-    const q = query(collection(db, "expenses"), orderBy("timestamp", "desc"));
+    const q = query(getUserCollection("expenses"), orderBy("timestamp", "desc"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
@@ -124,13 +125,7 @@ export default function ExpensesPage() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
+            
           </div>
         </nav>
 
@@ -356,4 +351,4 @@ export default function ExpensesPage() {
       </div>
     </ProtectedRoute>
   );
-}//hocus pocus f you
+}

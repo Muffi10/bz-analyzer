@@ -7,6 +7,7 @@ import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, PieChart, LogOut, ArrowLeft, Calendar, FileText } from "lucide-react";
+import { getUserCollection } from "@/lib/dbHelper";
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -27,9 +28,9 @@ export default function ReportsPage() {
       setIsLoading(true);
       try {
         const [salesSnap, expensesSnap, stocksSnap] = await Promise.all([
-          getDocs(query(collection(db, "sales"), orderBy("timestamp", "desc"))),
-          getDocs(query(collection(db, "expenses"), orderBy("timestamp", "desc"))),
-          getDocs(query(collection(db, "stocks"), orderBy("timestamp", "desc")))
+          getDocs(query(getUserCollection("sales"), orderBy("timestamp", "desc"))),
+          getDocs(query(getUserCollection("expenses"), orderBy("timestamp", "desc"))),
+          getDocs(query(getUserCollection("stocks"), orderBy("timestamp", "desc")))
         ]);
 
         const salesData = salesSnap.docs.map((doc) => ({
@@ -138,13 +139,6 @@ export default function ReportsPage() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
           </div>
         </nav>
 

@@ -7,6 +7,7 @@ import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, orderBy, query, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { Plus, Trash2, TrendingUp, LogOut, ArrowLeft, IndianRupee, Users, CreditCard, Smartphone, Search, Calendar, Package } from "lucide-react";
+import { getUserCollection } from "@/lib/dbHelper";
 
 export default function SalesPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function SalesPage() {
   // Fetch stocks for search functionality
   const fetchStocks = async () => {
     try {
-      const q = query(collection(db, "stocks"), orderBy("product", "asc"));
+      const q = query(getUserCollection("stocks"), orderBy("product", "asc"));
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({ 
         id: doc.id, 
@@ -104,7 +105,7 @@ export default function SalesPage() {
   // Update stock quantity after sale
   const updateStockQuantity = async (stockId: string, soldQuantity: number) => {
     try {
-      const stockRef = doc(db, "stocks", stockId);
+      const stockRef = doc(db, `users/${auth.currentUser?.uid}/stocks`, stockId);
       const stock = stocks.find(s => s.id === stockId);
       
       if (stock) {
@@ -138,7 +139,7 @@ export default function SalesPage() {
       const saleTimestamp = new Date(saleDate);
       saleTimestamp.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds());
 
-      await addDoc(collection(db, "sales"), {
+      await addDoc(getUserCollection("sales"), {
         product: product.trim(),
         quantity: parseFloat(quantity),
         actualPrice: parseFloat(actualPrice),
@@ -180,7 +181,7 @@ export default function SalesPage() {
       const saleTimestamp = new Date(saleDate);
       saleTimestamp.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds());
 
-      await addDoc(collection(db, "sales"), {
+      await addDoc(getUserCollection("sales"), {
         product: product.trim(),
         quantity: parseFloat(quantity),
         actualPrice: parseFloat(actualPrice),
@@ -193,7 +194,7 @@ export default function SalesPage() {
 
       // Update stock to zero if selling more than available
       if (selectedStock) {
-        const stockRef = doc(db, "stocks", selectedStock.id);
+        const stockRef = doc(db, `users/${auth.currentUser?.uid}/stocks`, selectedStock.id);
         await updateDoc(stockRef, {
           quantity: 0
         });
@@ -220,7 +221,7 @@ export default function SalesPage() {
   const handleDeleteSale = async (id: string) => {
     if (confirm("Are you sure you want to delete this sale record?")) {
       try {
-        await deleteDoc(doc(db, "sales", id));
+        await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/sales`, id));
         fetchSales();
       } catch (error) {
         console.error("Error deleting sale:", error);
@@ -230,7 +231,7 @@ export default function SalesPage() {
 
   // Fetch sales
   const fetchSales = async () => {
-    const q = query(collection(db, "sales"), orderBy("timestamp", "desc"));
+    const q = query(getUserCollection("sales"), orderBy("timestamp", "desc"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
@@ -295,13 +296,6 @@ export default function SalesPage() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
           </div>
         </nav>
 
