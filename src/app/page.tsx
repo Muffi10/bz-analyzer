@@ -10,16 +10,16 @@ export default function HomePage() {
 
   const pages = [
     { 
-      name: "Stocks", 
+      name: "Inventory", 
       path: "/stocks", 
-      icon: TrendingUp,
+      icon: ShoppingCart,
       color: "from-blue-500 to-blue-600",
       bgColor: "bg-blue-50"
     },
     { 
       name: "Sales", 
       path: "/sales", 
-      icon: ShoppingCart,
+      icon: TrendingUp,
       color: "from-green-500 to-green-600",
       bgColor: "bg-green-50"
     },

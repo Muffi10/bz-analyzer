@@ -5,8 +5,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { Plus, Trash2, Package, LogOut, ArrowLeft } from "lucide-react";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { Plus, Trash2, Package, LogOut, ArrowLeft, Edit, Save, X } from "lucide-react";
 import { getUserCollection } from "@/lib/dbHelper";
 
 export default function StocksPage() {
@@ -17,6 +17,8 @@ export default function StocksPage() {
   const [costPrice, setCostPrice] = useState("");
   const [stocks, setStocks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ product: "", quantity: "", unit: "pcs", costPrice: "" });
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -57,6 +59,44 @@ export default function StocksPage() {
       } catch (error) {
         console.error("Error deleting stock:", error);
       }
+    }
+  };
+
+  // Start editing a stock item
+  const handleEditStock = (stock: any) => {
+    setEditingId(stock.id);
+    setEditForm({
+      product: stock.product,
+      quantity: stock.quantity.toString(),
+      unit: stock.unit,
+      costPrice: stock.costPrice.toString()
+    });
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ product: "", quantity: "", unit: "pcs", costPrice: "" });
+  };
+
+  // Update stock item
+  const handleUpdateStock = async (id: string) => {
+    if (!editForm.product || !editForm.quantity || !editForm.costPrice) return;
+
+    try {
+      const stockRef = doc(db, `users/${auth.currentUser?.uid}/stocks`, id);
+      await updateDoc(stockRef, {
+        product: editForm.product.trim(),
+        quantity: parseFloat(editForm.quantity),
+        unit: editForm.unit,
+        costPrice: parseFloat(editForm.costPrice),
+      });
+      
+      setEditingId(null);
+      setEditForm({ product: "", quantity: "", unit: "pcs", costPrice: "" });
+      fetchStocks();
+    } catch (error) {
+      console.error("Error updating stock:", error);
     }
   };
 
@@ -271,21 +311,56 @@ export default function StocksPage() {
                       {stocks.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">{item.product}</div>
+                            {editingId === item.id ? (
+                              <input
+                                type="text"
+                                value={editForm.product}
+                                onChange={(e) => setEditForm({...editForm, product: e.target.value})}
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              />
+                            ) : (
+                              <div className="text-sm font-medium text-gray-900">{item.product}</div>
+                            )}
                           </td>
+                          
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">
-                              {item.quantity} {item.unit}
-                            </div>
+                            {editingId === item.id ? (
+                              <input
+                                type="number"
+                                value={editForm.quantity}
+                                onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                min="0"
+                                step="0.01"
+                              />
+                            ) : (
+                              <div className="text-sm text-gray-900">
+                                {item.quantity} {item.unit}
+                              </div>
+                            )}
                           </td>
+                          
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">₹{item.costPrice}</div>
+                            {editingId === item.id ? (
+                              <input
+                                type="number"
+                                value={editForm.costPrice}
+                                onChange={(e) => setEditForm({...editForm, costPrice: e.target.value})}
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                min="0"
+                                step="0.01"
+                              />
+                            ) : (
+                              <div className="text-sm text-gray-900">₹{item.costPrice}</div>
+                            )}
                           </td>
+                          
                           <td className="px-6 py-4">
                             <div className="text-sm font-semibold text-blue-600">
                               ₹{(item.quantity * item.costPrice).toFixed(2)}
                             </div>
                           </td>
+                          
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-500">
                               {item.timestamp.toLocaleDateString('en-IN', {
@@ -295,14 +370,45 @@ export default function StocksPage() {
                               })}
                             </div>
                           </td>
+                          
                           <td className="px-6 py-4">
-                            <button
-                              onClick={() => handleDeleteStock(item.id)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete item"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {editingId === item.id ? (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateStock(item.id)}
+                                    className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors"
+                                    title="Save changes"
+                                  >
+                                    <Save size={16} />
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg transition-colors"
+                                    title="Cancel editing"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleEditStock(item)}
+                                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Edit item"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStock(item.id)}
+                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete item"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

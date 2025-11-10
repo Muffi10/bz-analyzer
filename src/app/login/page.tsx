@@ -1,63 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { Chrome, TrendingUp, Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
-import { createOrUpdateUser } from "@/lib/userService";
+import { Chrome, TrendingUp, ShieldCheck, Zap, Crown, Sparkles } from "lucide-react";
+import { createOrUpdateUser, getUserData } from "@/lib/userService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
 
   const handleGoogleLogin = async () => {
     setError("");
     setIsLoading(true);
 
     try {
+      console.log("🔐 Signing in with Google...");
       const result = await signInWithPopup(auth, googleProvider);
-      await createOrUpdateUser(result.user);
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Login failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEmailPasswordAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      let result;
       
-      if (isSignup) {
-        result = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("✅ Google login successful:", result.user.email);
+      
+      // Check if user already exists before creating/updating
+      const existingUserData = await getUserData(result.user.uid);
+      
+      if (existingUserData) {
+        console.log("📋 User already exists, updating last login...");
       } else {
-        result = await signInWithEmailAndPassword(auth, email, password);
+        console.log("🆕 Creating new user account...");
       }
       
+      // Create or update user document
       await createOrUpdateUser(result.user);
+      
       router.push("/");
     } catch (err: any) {
-      if (err.code === "auth/email-already-in-use") {
-        setError("Email already in use. Try logging in instead.");
-      } else if (err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
-        setError("Invalid email or password");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters");
-      } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address");
+      console.error("❌ Login error:", err);
+      
+      // User-friendly error messages
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Sign-in was cancelled. Please try again.");
+      } else if (err.code === "auth/popup-blocked") {
+        setError("Popup was blocked. Please allow popups for this site.");
+      } else if (err.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection.");
       } else {
-        setError(err.message || "Authentication failed");
+        setError(err.message || "Sign-in failed. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -116,10 +105,10 @@ export default function LoginPage() {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-2">
-              {isSignup ? "Create Account" : "Welcome Back"}
+              Welcome to BizAnalyzer
             </h3>
             <p className="text-gray-600">
-              {isSignup ? "Start your 15-day free trial" : "Sign in to your account"}
+              Sign in to start your 15-day free trial
             </p>
           </div>
           
@@ -129,93 +118,17 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Email/Password Form */}
-          <form onSubmit={handleEmailPasswordAuth} className="space-y-5 mb-6">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400 bg-white/50"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={isSignup ? "Minimum 6 characters" : "Your password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 pl-10 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400 bg-white/50"
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-t-2 border-white border-solid rounded-full animate-spin" />
-                  {isSignup ? "Creating Account..." : "Signing In..."}
-                </div>
-              ) : (
-                isSignup ? "Create Account" : "Sign In"
-              )}
-            </button>
-          </form>
-
-          {/* Toggle between Login/Signup */}
-          <div className="text-center mb-6">
-            <button
-              onClick={() => {
-                setIsSignup(!isSignup);
-                setError("");
-              }}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-            >
-              {isSignup ? "Already have an account? Sign in" : "Need an account? Sign up"}
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-
-          {/* Google Sign In */}
+          {/* Google Sign In Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full bg-white border border-gray-300 text-gray-700 py-3.5 px-6 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center justify-center gap-3"
+            className="w-full bg-white border border-gray-300 text-gray-700 py-3.5 px-6 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center justify-center gap-3 transform hover:-translate-y-0.5"
           >
             {isLoading ? (
-              <div className="w-4 h-4 border-t-2 border-gray-700 border-solid rounded-full animate-spin" />
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-t-2 border-gray-700 border-solid rounded-full animate-spin" />
+                Signing in...
+              </div>
             ) : (
               <>
                 <Chrome className="w-5 h-5" />
@@ -230,6 +143,34 @@ export default function LoginPage() {
               🎉 <span className="font-semibold text-blue-600">15-day free trial</span> • No credit card required
             </p>
           </div>
+
+          {/* Features in Mobile View */}
+          <div className="lg:hidden mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+            <h4 className="font-semibold text-black mb-3 text-center">Everything you get:</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-blue-600" />
+                <span className="text-black">Sales Tracking</span>
+              </div>
+              <div className="flex items-center gap-1 ">
+                <ShieldCheck className="w-3 h-3 text-green-600" />
+                <span className="text-black">15-Day Trial</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Zap className="w-3 h-3 text-blue-600" />
+                <span className="text-black">Live Analytics</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Crown className="w-3 h-3 text-purple-600" />
+                <span className="text-black">₹50/month</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Terms */}
+          <p className="text-xs text-gray-500 text-center mt-6">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </p>
         </div>
       </div>
     </div>
