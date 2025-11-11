@@ -9,7 +9,7 @@ export default function Footer() {
     <footer className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <div className="max-w-7xl mx-auto px-6 py-2">
         {/* Main Footer Content */}
-        <div className="flex items-center justify-between my-2 ">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between my-2 gap-8">
           {/* Brand Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -23,12 +23,11 @@ export default function Footer() {
                 <p className="text-gray-300 text-sm">Business Intelligence Platform</p>
               </div>
             </div>
-            
           </div>
 
           {/* Contact Information */}
           <div className="space-y-2 mb-2">
-            <h4 className="text-lg  text-hite mb-4">Contact-Us</h4>
+            <h4 className="text-lg mb-4">Contact-Us</h4>
             <div className="space-y-3">
               <a 
                 href="mailto:bzanalyzer@gmail.com" 
@@ -57,20 +56,53 @@ export default function Footer() {
               </a>
             </div>
           </div>
-
-          {/* Quick Links */}
-          
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-gray-700 pt-2">
-          <div className="flex flex-col md:flex-row items-center justify-center ">
-            {/* Copyright */}
+        {/* Policy Links Section */}
+        <div className="border-t border-gray-700 mt-4 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-gray-300 text-sm mb-2">
+            <a
+              href="/privacy-policy"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <span className="hidden sm:inline">|</span>
+            <a
+              href="/terms"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Terms & Conditions
+            </a>
+            <span className="hidden sm:inline">|</span>
+            <a
+              href="/refund-policy"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Cancellation & Refund Policy
+            </a>
+            <span className="hidden sm:inline">|</span>
+            <a
+              href="/shipping-policy"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Shipping Policy
+            </a>
+            <span className="hidden sm:inline">|</span>
+            <a
+              href="/contact"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Contact Us
+            </a>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="flex flex-col md:flex-row items-center justify-center">
             <div className="flex items-center gap-2 text-gray-400 text-sm">
               <Copyright className="w-4 h-4" />
               <span>{currentYear} BizAnalyzer. All rights reserved.</span>
             </div>
-
           </div>
         </div>
       </div>

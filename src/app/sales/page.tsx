@@ -6,7 +6,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, orderBy, query, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { Plus, Trash2, TrendingUp, LogOut, ArrowLeft, IndianRupee, Users, CreditCard, Smartphone, Search, Calendar, Package } from "lucide-react";
+import { Plus, Trash2, TrendingUp, LogOut, ArrowLeft, IndianRupee, Users, CreditCard, Smartphone, Search, Calendar, Package, RotateCcw } from "lucide-react";
 import { getUserCollection } from "@/lib/dbHelper";
 
 export default function SalesPage() {
@@ -26,9 +26,10 @@ export default function SalesPage() {
   const [selectedStock, setSelectedStock] = useState<any>(null);
   const [showStockWarning, setShowStockWarning] = useState(false);
   const [stockWarningData, setStockWarningData] = useState({ product: "", available: 0, requested: 0 });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<any>(null);
   
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -118,6 +119,31 @@ export default function SalesPage() {
       }
     } catch (error) {
       console.error("Error updating stock:", error);
+    }
+  };
+
+  // Add stock quantity back when sale is deleted
+  const restoreStockQuantity = async (productName: string, quantityToRestore: number) => {
+    try {
+      // Find the stock item by product name
+      const stockItem = stocks.find(stock => 
+        stock.product.toLowerCase() === productName.toLowerCase()
+      );
+      
+      if (stockItem) {
+        const stockRef = doc(db, `users/${auth.currentUser?.uid}/stocks`, stockItem.id);
+        const newQuantity = stockItem.quantity + quantityToRestore;
+        await updateDoc(stockRef, {
+          quantity: newQuantity
+        });
+        // Refresh stocks data
+        fetchStocks();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error restoring stock:", error);
+      return false;
     }
   };
 
@@ -217,16 +243,39 @@ export default function SalesPage() {
     }
   };
 
-  // Delete sale record
-  const handleDeleteSale = async (id: string) => {
-    if (confirm("Are you sure you want to delete this sale record?")) {
-      try {
-        await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/sales`, id));
-        fetchSales();
-      } catch (error) {
-        console.error("Error deleting sale:", error);
+  // Delete sale record with confirmation and stock restoration
+  const handleDeleteSale = async (sale: any, restoreStock: boolean = false) => {
+    try {
+      // Check if product exists in stock and restore quantity if requested
+      if (restoreStock) {
+        const stockRestored = await restoreStockQuantity(sale.product, sale.quantity);
+        if (stockRestored) {
+          console.log(`Stock restored: ${sale.quantity} units of ${sale.product}`);
+        }
       }
+
+      await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/sales`, sale.id));
+      fetchSales();
+      
+      // Show success message
+      if (restoreStock) {
+        alert(`✅ Sale deleted and ${sale.quantity} units of ${sale.product} restored to stock.`);
+      } else {
+        alert("✅ Sale deleted successfully.");
+      }
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      alert("❌ Failed to delete sale. Please try again.");
+    } finally {
+      setShowDeleteConfirm(false);
+      setSaleToDelete(null);
     }
+  };
+
+  // Show delete confirmation
+  const showDeleteConfirmation = (sale: any) => {
+    setSaleToDelete(sale);
+    setShowDeleteConfirm(true);
   };
 
   // Fetch sales
@@ -239,6 +288,13 @@ export default function SalesPage() {
       timestamp: doc.data().timestamp?.toDate?.() || new Date(doc.data().timestamp)
     }));
     setSales(data);
+  };
+
+  // Check if product exists in stock
+  const isProductInStock = (productName: string) => {
+    return stocks.some(stock => 
+      stock.product.toLowerCase() === productName.toLowerCase()
+    );
   };
 
   // Close dropdown when clicking outside
@@ -610,7 +666,7 @@ export default function SalesPage() {
                           </td>
                           <td className="px-6 py-4">
                             <button
-                              onClick={() => handleDeleteSale(item.id)}
+                              onClick={() => showDeleteConfirmation(item)}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete sale record"
                             >
@@ -680,7 +736,79 @@ export default function SalesPage() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && saleToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete Sale Record</h3>
+                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                <p className="text-gray-800 text-sm mb-3">
+                  Are you sure you want to delete the sale of <strong>{saleToDelete.quantity} units</strong> of <strong>"{saleToDelete.product}"</strong>?
+                </p>
+                
+                {isProductInStock(saleToDelete.product) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <RotateCcw className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Stock Restoration Available</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      This product exists in your stock. Do you want to restore {saleToDelete.quantity} units back to stock when deleting this sale?
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setSaleToDelete(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-gray-600 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                
+                {isProductInStock(saleToDelete.product) ? (
+                  <div className="flex gap-2 flex-1">
+                    <button
+                      onClick={() => handleDeleteSale(saleToDelete, false)}
+                      className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200"
+                    >
+                      Delete Only
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSale(saleToDelete, true)}
+                      className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw size={16} />
+                      Restore Stock
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleDeleteSale(saleToDelete, false)}
+                    className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200"
+                  >
+                    Confirm Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
-}//hocus pocus fuck you
+}

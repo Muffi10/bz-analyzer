@@ -204,6 +204,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const isSubscriptionActive = checkSubscriptionStatus(userData);
   const daysRemaining = getDaysRemaining(userData);
 
+  // CRITICAL: Always allow access to subscription page so users can upgrade
+  const isSubscriptionPage = pathname === "/subscription";
+
   return (
     <UserContext.Provider value={{ user, userData, isSubscriptionActive, daysRemaining }}>
       {/* Trial/Subscription Banner */}
@@ -211,21 +214,21 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 text-center text-sm font-medium shadow-lg">
           🎉 Free Trial: <span className="font-bold">{daysRemaining} days remaining</span> • 
           <button 
-            onClick={() => alert("Payment integration coming soon!")}
+            onClick={() => router.push("/subscription")}
             className="ml-2 underline hover:no-underline font-semibold"
           >
-            Upgrade to Pro (₹50/month)
+            Upgrade to Pro (₹49/month)
           </button>
         </div>
       )}
 
-      {userData.subscriptionStatus === "expired" && (
+      {userData.subscriptionStatus === "expired" && !isSubscriptionPage && (
         <div className="bg-red-600 text-white px-4 py-3 text-center font-medium shadow-lg">
           <div className="flex items-center justify-center gap-2">
             <AlertCircle size={18} />
             <span>Your trial has ended. Upgrade to continue using BizAnalyzer.</span>
             <button 
-              onClick={() => alert("Payment integration coming soon!")}
+              onClick={() => router.push("/subscription")}
               className="ml-3 bg-white text-red-600 px-4 py-1 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               <Crown className="inline w-4 h-4 mr-1" />
@@ -235,8 +238,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         </div>
       )}
 
-      {/* Read-only overlay for expired subscriptions */}
-      {!isSubscriptionActive ? (
+      {/* Read-only overlay for expired subscriptions - EXCEPT on subscription page */}
+      {!isSubscriptionActive && !isSubscriptionPage ? (
         <div className="relative">
           <div className="pointer-events-none opacity-60">
             <Suspense fallback={<DashboardSkeleton />}>
@@ -254,11 +257,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
                   Your 15-day free trial has expired. Upgrade to Pro to continue managing your business.
                 </p>
                 <button
-                  onClick={() => alert("Payment integration coming soon!")}
+                  onClick={() => router.push("/subscription")}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 >
                   <Crown className="w-5 h-5" />
-                  Upgrade to Pro - ₹50/month
+                  Upgrade to Pro - ₹49/month
                 </button>
                 <p className="text-xs text-gray-500 mt-4">
                   All your data is safe and will be available after upgrade

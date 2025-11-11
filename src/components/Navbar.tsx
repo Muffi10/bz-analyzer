@@ -57,7 +57,7 @@ export default function Navbar() {
 
   const handleUpgrade = () => {
     setMenuOpen(false);
-    alert("Payment integration coming soon! ₹50/month");
+    router.push("/subscription")
   };
 
   const daysRemaining = userData ? getDaysRemaining(userData) : 0;
