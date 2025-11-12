@@ -1,3 +1,4 @@
+// src/components/Footer.tsx
 "use client";
 
 import { TrendingUp, Mail, Phone, Copyright } from "lucide-react";

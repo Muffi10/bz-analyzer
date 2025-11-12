@@ -1,13 +1,19 @@
 // src/components/UpgradeModal.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Crown, Check, Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 
 // Load Razorpay script (client-side only)
 const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
+    // Check if script is already loaded
+    if (typeof window !== 'undefined' && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -24,6 +30,18 @@ interface UpgradeModalProps {
 export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -62,12 +80,12 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
         throw new Error(data.error || "Failed to create subscription");
       }
 
-      // Initialize Razorpay checkout
+      // Initialize Razorpay checkout with full-screen configuration
       const options = {
         key: data.keyId,
         subscription_id: data.subscriptionId,
         name: "BizAnalyzer",
-        description: "Pro Subscription - ₹49/month", // Change to ₹50/month for production
+        description: "Pro Subscription - ₹49/month",
         // image: "https://razorpay.com/favicon.png", // Add your logo
         handler: async function (response: any) {
           try {
@@ -104,32 +122,97 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           color: "#3B82F6",
         },
         modal: {
+          // Make Razorpay modal full-screen and closeable
           ondismiss: function () {
             setIsLoading(false);
+            console.log("Razorpay modal closed");
           },
+          escape: true, // Allow closing with Escape key
+          backdropclose: true, // Allow closing by clicking backdrop
         },
+        // Full-screen configuration
+        fullscreen: true,
+        config: {
+          display: {
+            blocks: {
+              banks: {
+                name: "Pay via Netbanking",
+                instruments: [
+                  {
+                    method: "netbanking",
+                    banks: [
+                      "HDFC",
+                      "ICICI", 
+                      "SBI",
+                      "AXIS",
+                      "KOTAK",
+                      "YESBANK"
+                    ]
+                  }
+                ]
+              },
+              cards: {
+                name: "Pay via Cards",
+                instruments: [
+                  {
+                    method: "card",
+                    networks: ["visa", "mastercard", "rupay"]
+                  }
+                ]
+              },
+              upi: {
+                name: "Pay via UPI",
+                instruments: [
+                  {
+                    method: "upi"
+                  }
+                ]
+              }
+            },
+            sequence: ["block.banks", "block.cards", "block.upi"],
+            preferences: {
+              show_default_blocks: true
+            }
+          }
+        }
       };
 
       // @ts-ignore
       const razorpay = new window.Razorpay(options);
+      
+      // Add event listeners for Razorpay modal
+      razorpay.on('payment.failed', function (response: any) {
+        console.error("Payment failed:", response.error);
+        setError(`Payment failed: ${response.error.description || "Unknown error"}`);
+        setIsLoading(false);
+      });
+
       razorpay.open();
     } catch (err: any) {
       console.error("Upgrade error:", err);
       setError(err.message || "Failed to process upgrade");
-    } finally {
       setIsLoading(false);
     }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative transform transition-all duration-300 scale-100">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute -top-3 -right-3 bg-white text-gray-400 hover:text-gray-600 transition-all duration-200 rounded-full p-1 shadow-lg hover:shadow-xl border border-gray-200 hover:scale-110 z-10"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         {/* Icon */}

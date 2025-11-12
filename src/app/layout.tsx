@@ -19,6 +19,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Business Analyzer",
   description: "Track your stock, sales, expenses, and profit with ease",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

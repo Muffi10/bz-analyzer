@@ -33,7 +33,6 @@ export default function SubscriptionPage() {
   // Wait for auth to be ready first
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("🔐 Auth state changed:", user?.uid);
       if (user) {
         setAuthReady(true);
       } else {
@@ -57,7 +56,7 @@ export default function SubscriptionPage() {
   const fetchUserData = async () => {
     try {
       const user = auth.currentUser;
-      console.log("🔍 Fetching for user:", user?.uid, user?.email);
+      
       
       if (!user) {
         console.error("❌ No user logged in");
@@ -68,11 +67,9 @@ export default function SubscriptionPage() {
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
 
-      console.log("📄 User document exists:", userSnap.exists());
       
       if (userSnap.exists()) {
         const data = userSnap.data();
-        console.log("📊 Raw Firestore data:", data);
         
         const userData: UserData = {
           subscriptionStatus: data.subscriptionStatus || "trial",
@@ -82,34 +79,30 @@ export default function SubscriptionPage() {
         };
 
         // Handle dates with detailed logging
-        console.log("📅 Processing dates...");
         
         if (data.trialEndsAt) {
-          console.log("Trial ends at (raw):", data.trialEndsAt);
           userData.trialEndsAt = data.trialEndsAt.toDate ? data.trialEndsAt.toDate() : new Date(data.trialEndsAt);
-          console.log("Trial ends at (converted):", userData.trialEndsAt);
+          
         }
         
         if (data.currentPeriodEnd) {
-          console.log("Period end (raw):", data.currentPeriodEnd);
+          
           userData.currentPeriodEnd = data.currentPeriodEnd.toDate ? data.currentPeriodEnd.toDate() : new Date(data.currentPeriodEnd);
-          console.log("Period end (converted):", userData.currentPeriodEnd);
+          
         }
         
         if (data.currentPeriodStart) {
-          console.log("Period start (raw):", data.currentPeriodStart);
           userData.currentPeriodStart = data.currentPeriodStart.toDate ? data.currentPeriodStart.toDate() : new Date(data.currentPeriodStart);
-          console.log("Period start (converted):", userData.currentPeriodStart);
+          
         }
 
         if (data.createdAt) {
           userData.createdAt = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
         }
 
-        console.log("✅ Final processed user data:", userData);
         setUserData(userData);
       } else {
-        console.log("⚠️ No user document found - creating default");
+        
         
         const defaultUserData: UserData = {
           subscriptionStatus: "trial",
@@ -140,24 +133,20 @@ export default function SubscriptionPage() {
         return;
       }
 
-      console.log("💳 Fetching payments for user:", user.uid);
+      
       const paymentsRef = collection(db, `users/${user.uid}/payments`);
       const q = query(paymentsRef, orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
 
-      console.log("💳 Found", snapshot.size, "payments");
 
       const paymentsData = snapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log("Payment doc:", doc.id, data);
         return {
           id: doc.id,
           ...data,
           timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
         };
       });
-
-      console.log("✅ Processed payments:", paymentsData);
       setPayments(paymentsData);
     } catch (error) {
       console.error("❌ Error fetching payments:", error);
@@ -199,7 +188,6 @@ export default function SubscriptionPage() {
 
   const getDaysRemaining = () => {
     if (!userData) {
-      console.log("⚠️ getDaysRemaining: No userData");
       return 0;
     }
     
@@ -207,10 +195,8 @@ export default function SubscriptionPage() {
 
     if (userData.subscriptionStatus === "trial" && userData.trialEndsAt) {
       endDate = userData.trialEndsAt;
-      console.log("📅 Using trial end date:", endDate);
     } else if (userData.currentPeriodEnd) {
       endDate = userData.currentPeriodEnd;
-      console.log("📅 Using period end date:", endDate);
     }
 
     if (!endDate) {

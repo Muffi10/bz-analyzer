@@ -12,6 +12,7 @@ import { getUserCollection } from "@/lib/dbHelper";
 export default function SalesPage() {
   const router = useRouter();
   const [sales, setSales] = useState<any[]>([]);
+  const [filteredSales, setFilteredSales] = useState<any[]>([]);
   const [stocks, setStocks] = useState<any[]>([]);
   const [product, setProduct] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -28,9 +29,45 @@ export default function SalesPage() {
   const [stockWarningData, setStockWarningData] = useState({ product: "", available: 0, requested: 0 });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<any>(null);
+  const [timeFilter, setTimeFilter] = useState<"all" | "today" | "week" | "year">("all");
   
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter sales based on time filter
+  useEffect(() => {
+    if (timeFilter === "all") {
+      setFilteredSales(sales);
+      return;
+    }
+
+    const now = new Date();
+    let filtered = [];
+
+    switch (timeFilter) {
+      case "today":
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        filtered = sales.filter(sale => sale.timestamp >= todayStart);
+        break;
+      
+      case "week":
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+        weekStart.setHours(0, 0, 0, 0);
+        filtered = sales.filter(sale => sale.timestamp >= weekStart);
+        break;
+      
+      case "year":
+        const yearStart = new Date(now.getFullYear(), 0, 1); // January 1st of current year
+        filtered = sales.filter(sale => sale.timestamp >= yearStart);
+        break;
+      
+      default:
+        filtered = sales;
+    }
+
+    setFilteredSales(filtered);
+  }, [timeFilter, sales]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -288,6 +325,7 @@ export default function SalesPage() {
       timestamp: doc.data().timestamp?.toDate?.() || new Date(doc.data().timestamp)
     }));
     setSales(data);
+    setFilteredSales(data);
   };
 
   // Check if product exists in stock
@@ -314,11 +352,11 @@ export default function SalesPage() {
     fetchStocks();
   }, []);
 
-  // Calculate statistics
-  const totalSales = sales.length;
-  const totalRevenue = sales.reduce((sum, item) => sum + (item.quantity * item.soldPrice), 0);
-  const totalProfit = sales.reduce((sum, item) => sum + item.profit, 0);
-  const totalQuantity = sales.reduce((sum, item) => sum + item.quantity, 0);
+  // Calculate statistics based on filtered sales
+  const totalSales = filteredSales.length;
+  const totalRevenue = filteredSales.reduce((sum, item) => sum + (item.quantity * item.soldPrice), 0);
+  const totalProfit = filteredSales.reduce((sum, item) => sum + item.profit, 0);
+  const totalQuantity = filteredSales.reduce((sum, item) => sum + item.quantity, 0);
 
   const getPaymentIcon = (mode: string) => {
     switch (mode) {
@@ -357,6 +395,50 @@ export default function SalesPage() {
 
         {/* Content */}
         <div className="max-w-7xl mx-auto p-6">
+          {/* Time Filter Buttons */}
+          <div className="flex gap-3 mb-6">
+            <button
+              onClick={() => setTimeFilter("all")}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+                timeFilter === "all" 
+                  ? "bg-blue-600 text-white shadow-lg" 
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              All Sales
+            </button>
+            <button
+              onClick={() => setTimeFilter("today")}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+                timeFilter === "today" 
+                  ? "bg-green-600 text-white shadow-lg" 
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setTimeFilter("week")}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+                timeFilter === "week" 
+                  ? "bg-purple-600 text-white shadow-lg" 
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              This Week
+            </button>
+            <button
+              onClick={() => setTimeFilter("year")}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+                timeFilter === "year" 
+                  ? "bg-orange-600 text-white shadow-lg" 
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              This Year
+            </button>
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
@@ -598,7 +680,7 @@ export default function SalesPage() {
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h2 className="text-xl font-bold text-gray-900">Sales History</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    {sales.length} sales records
+                    {filteredSales.length} sales records {timeFilter !== "all" && `(${timeFilter})`}
                   </p>
                 </div>
 
@@ -618,7 +700,7 @@ export default function SalesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {sales.map((item) => (
+                      {filteredSales.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">{item.product}</div>
@@ -678,11 +760,15 @@ export default function SalesPage() {
                     </tbody>
                   </table>
                   
-                  {sales.length === 0 && (
+                  {filteredSales.length === 0 && (
                     <div className="text-center py-12">
                       <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500 text-lg">No sales records yet</p>
-                      <p className="text-gray-400 text-sm mt-1">Record your first sale to get started</p>
+                      <p className="text-gray-500 text-lg">
+                        {timeFilter === "all" ? "No sales records yet" : `No sales records for ${timeFilter}`}
+                      </p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        {timeFilter === "all" ? "Record your first sale to get started" : "Try changing the time filter"}
+                      </p>
                     </div>
                   )}
                 </div>

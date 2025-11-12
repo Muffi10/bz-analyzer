@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getUserData, UserData, getDaysRemaining } from "@/lib/userService";
-import { Menu, X, Home, TrendingUp, ShoppingCart, DollarSign, BarChart3, LogOut, LogIn, Crown, Calendar } from "lucide-react";
+import { Menu, X, Home, TrendingUp, ShoppingCart, DollarSign, BarChart3, LogOut, LogIn, Crown, Calendar, User as UserIcon } from "lucide-react";
 
 export default function Navbar() {
   const router = useRouter();
@@ -57,10 +57,23 @@ export default function Navbar() {
 
   const handleUpgrade = () => {
     setMenuOpen(false);
-    router.push("/subscription")
+    router.push("/subscription");
+  };
+
+  const handleSubscriptionPage = () => {
+    setMenuOpen(false);
+    router.push("/subscription");
   };
 
   const daysRemaining = userData ? getDaysRemaining(userData) : 0;
+
+  // Get profile picture URL or use default
+  const getProfilePicture = () => {
+    if (user?.photoURL) {
+      return user.photoURL;
+    }
+    return "/images/default-profile.png";
+  };
 
   return (
     <>
@@ -82,13 +95,16 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {user && (
             <div className="hidden md:flex items-center gap-3">
-              {user.photoURL && (
-                <img 
-                  src={user.photoURL} 
-                  alt={user.displayName || "User"} 
-                  className="w-10 h-10 rounded-full border-2 border-blue-200 shadow-sm"
-                />
-              )}
+              <img 
+                src={getProfilePicture()} 
+                alt={user.displayName || "User"} 
+                className="w-10 h-10 rounded-full border-2 border-blue-200 shadow-sm"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/images/default-profile.png";
+                }}
+              />
             </div>
           )}
           
@@ -131,13 +147,16 @@ export default function Navbar() {
           {user && (
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
               <div className="flex items-center gap-3 mb-3">
-                {user.photoURL && (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || "User"} 
-                    className="w-12 h-12 rounded-full border-2 border-blue-300 shadow-sm"
-                  />
-                )}
+                <img 
+                  src={getProfilePicture()} 
+                  alt={user.displayName || "User"} 
+                  className="w-12 h-12 rounded-full border-2 border-blue-300 shadow-sm"
+                  onError={(e) => {
+                    // Fallback if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/images/default-profile.png";
+                  }}
+                />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-blue-900">{user.displayName}</p>
                   <p className="text-xs text-blue-600 truncate">{user.email}</p>
@@ -163,9 +182,18 @@ export default function Navbar() {
                     </div>
                   )}
                   {userData.subscriptionStatus === "active" && (
-                    <div className="flex items-center gap-2 text-xs text-green-700">
-                      <Crown size={14} className="text-yellow-600" />
-                      <span className="font-medium">Pro Member</span>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-green-700">
+                        <Crown size={14} className="text-yellow-600" />
+                        <span className="font-medium">Pro Member</span>
+                      </div>
+                      <button
+                        onClick={handleSubscriptionPage}
+                        className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-2 py-1 rounded-md hover:from-green-700 hover:to-green-800 transition-all text-xs"
+                      >
+                        <UserIcon size={12} />
+                        <span className="font-medium">Manage</span>
+                      </button>
                     </div>
                   )}
                   {userData.subscriptionStatus === "expired" && (
@@ -217,18 +245,56 @@ export default function Navbar() {
                 </button>
               );
             })}
+
+            {/* Subscription Page Link - Only for active subscribers */}
+            {user && userData && userData.subscriptionStatus === "active" && (
+              <button
+                onClick={handleSubscriptionPage}
+                className={`
+                  w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200
+                  ${pathname === "/subscription" 
+                    ? 'bg-gradient-to-r from-green-50 to-green-100 border border-green-200 shadow-sm' 
+                    : 'hover:bg-gray-50 hover:shadow-sm'
+                  }
+                `}
+              >
+                <div className={`
+                  w-10 h-10 rounded-lg flex items-center justify-center transition-colors
+                  ${pathname === "/subscription" 
+                    ? 'bg-gradient-to-br from-green-600 to-green-700 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600'
+                  }
+                `}>
+                  <Crown size={20} />
+                </div>
+                <span className={`font-medium ${pathname === "/subscription" ? 'text-green-700' : 'text-gray-700'}`}>
+                  Subscription
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Bottom Actions - Fixed at bottom */}
           <div className="p-4 border-t border-gray-200 bg-white space-y-3">
-            {/* Upgrade Button */}
+            {/* Upgrade Button - Show for non-active subscribers */}
             {user && userData && userData.subscriptionStatus !== "active" && (
               <button
                 onClick={handleUpgrade}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium"
               >
                 <Crown className="w-5 h-5" />
-                Upgrade to Pro - ₹50/month
+                Upgrade to Pro - ₹49/month
+              </button>
+            )}
+
+            {/* Subscription Management Button - Show for active subscribers */}
+            {user && userData && userData.subscriptionStatus === "active" && (
+              <button
+                onClick={handleSubscriptionPage}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-xl shadow-lg hover:shadow-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium"
+              >
+                <Crown className="w-5 h-5" />
+                Manage Subscription
               </button>
             )}
             
