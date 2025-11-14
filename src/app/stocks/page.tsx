@@ -32,7 +32,7 @@ export default function StocksPage() {
 
     setIsLoading(true);
     try {
-      await addDoc(getUserCollection("stocks"), {
+      await addDoc(await getUserCollection("stocks"), {
         product: product.trim(),
         quantity: parseFloat(quantity),
         unit,
@@ -102,7 +102,7 @@ export default function StocksPage() {
 
   // Fetch stock items
   const fetchStocks = async () => {
-    const snapshot = await getDocs(getUserCollection("stocks"));
+    const snapshot = await getDocs(await getUserCollection("stocks"));
     const data = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
       ...doc.data(),

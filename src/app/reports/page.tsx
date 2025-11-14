@@ -48,9 +48,9 @@ export default function ReportsPage() {
       setIsLoading(true);
       try {
         const [salesSnap, expensesSnap, stocksSnap] = await Promise.all([
-          getDocs(query(getUserCollection("sales"), orderBy("timestamp", "desc"))),
-          getDocs(query(getUserCollection("expenses"), orderBy("timestamp", "desc"))),
-          getDocs(query(getUserCollection("stocks"), orderBy("timestamp", "desc")))
+          getDocs(query(await getUserCollection("sales"), orderBy("timestamp", "desc"))),
+          getDocs(query(await getUserCollection("expenses"), orderBy("timestamp", "desc"))),
+          getDocs(query(await getUserCollection("stocks"), orderBy("timestamp", "desc")))
         ]);
 
         const salesData = salesSnap.docs.map((doc) => ({

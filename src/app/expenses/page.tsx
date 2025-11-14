@@ -34,7 +34,7 @@ export default function ExpensesPage() {
 
     setIsLoading(true);
     try {
-      await addDoc(getUserCollection("expenses"), {
+      await addDoc(await getUserCollection("expenses"), {
         category: category.trim(),
         amount: parseFloat(amount),
         description: description.trim() || "No description",
@@ -65,7 +65,7 @@ export default function ExpensesPage() {
 
   // Fetch expenses
   const fetchExpenses = async () => {
-    const q = query(getUserCollection("expenses"), orderBy("timestamp", "desc"));
+    const q = query(await getUserCollection("expenses"), orderBy("timestamp", "desc"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ 
       id: doc.id, 
