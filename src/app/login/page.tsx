@@ -117,8 +117,8 @@ export default function LoginPage() {
             </div>
 
             {/* Features */}
-            <div className="flex items-center justify-center">
-            <div className="space-y-3 pt-4">
+            
+            <div className="space-y-3 pt-4 ">
               {[
                 "📊 Real-time sales analytics",
                 "📦 Inventory management", 
@@ -131,7 +131,6 @@ export default function LoginPage() {
                   <span>{feature}</span>
                 </div>
               ))}
-            </div>
             </div>
           </div>
 

@@ -36,48 +36,59 @@ export default function SalesPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Filter sales based on time filter
-  useEffect(() => {
-    if (timeFilter === "all") {
-      setFilteredSales(sales);
-      return;
-    }
+// Replace the useEffect for filtering (around line 48-82) with this:
 
-    const now = new Date();
-    let filtered = [];
+useEffect(() => {
+  if (timeFilter === "all") {
+    setFilteredSales(sales);
+    return;
+  }
 
-    switch (timeFilter) {
-      case "today":
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        filtered = sales.filter(sale => {
-          const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
-          return saleDate >= todayStart;
-        });
-        break;
-      
-      case "week":
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
-        weekStart.setHours(0, 0, 0, 0);
-        filtered = sales.filter(sale => {
-          const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
-          return saleDate >= weekStart;
-        });
-        break;
-      
-      case "year":
-        const yearStart = new Date(now.getFullYear(), 0, 1); // January 1st of current year
-        filtered = sales.filter(sale => {
-          const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
-          return saleDate >= yearStart;
-        });
-        break;
-      
-      default:
-        filtered = sales;
-    }
+  const now = new Date();
+  let filtered = [];
 
-    setFilteredSales(filtered);
-  }, [timeFilter, sales]);
+  switch (timeFilter) {
+    case "today":
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      filtered = sales.filter(sale => {
+        const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
+        return saleDate >= todayStart;
+      });
+      break;
+    
+    case "week":
+      // Get start of current week (Monday)
+      const currentDate = new Date();
+      const currentDay = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // If Sunday, go back 6 days, else go back to Monday
+      
+      const weekStart = new Date(currentDate);
+      weekStart.setDate(currentDate.getDate() - daysFromMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      
+      console.log("Week start:", weekStart);
+      
+      filtered = sales.filter(sale => {
+        const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
+        return saleDate >= weekStart;
+      });
+      break;
+    
+    case "year":
+      const yearStart = new Date(now.getFullYear(), 0, 1); // January 1st of current year
+      filtered = sales.filter(sale => {
+        const saleDate = sale.timestamp?.toDate ? sale.timestamp.toDate() : new Date(sale.timestamp);
+        return saleDate >= yearStart;
+      });
+      break;
+    
+    default:
+      filtered = sales;
+  }
+
+  console.log(`Filtered ${filtered.length} sales for ${timeFilter}`);
+  setFilteredSales(filtered);
+}, [timeFilter, sales]);
 
   const handleLogout = async () => {
     await signOut(auth);

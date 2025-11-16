@@ -37,7 +37,7 @@ export const RAZORPAY_CONFIG = {
   keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
   planId: process.env.NEXT_PUBLIC_RAZORPAY_PLAN_ID!,
   currency: "INR",
-  planAmount: 100, // ₹1 in paise (100 paise = ₹1) - Change to 5000 for ₹50
+  planAmount: 4900, // ₹49 in paise (4900 paise = ₹49) - CHANGED FOR LIVE
 };
 
 // Verify Razorpay signature (SERVER-SIDE ONLY)
