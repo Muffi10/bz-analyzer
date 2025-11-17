@@ -19,6 +19,8 @@ export default function StocksPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ product: "", quantity: "", unit: "pcs", costPrice: "" });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [stockToDelete, setStockToDelete] = useState<any>(null);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -50,15 +52,23 @@ export default function StocksPage() {
     }
   };
 
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (stock: any) => {
+    setStockToDelete(stock);
+    setShowDeleteConfirm(true);
+  };
+
   // Delete stock item
-  const handleDeleteStock = async (id: string) => {
-    if (confirm("Are you sure you want to delete this stock item?")) {
-      try {
-        await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/stocks`, id));
-        fetchStocks();
-      } catch (error) {
-        console.error("Error deleting stock:", error);
-      }
+  const handleDeleteStock = async () => {
+    if (!stockToDelete) return;
+
+    try {
+      await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/stocks`, stockToDelete.id));
+      fetchStocks();
+      setShowDeleteConfirm(false);
+      setStockToDelete(null);
+    } catch (error) {
+      console.error("Error deleting stock:", error);
     }
   };
 
@@ -325,14 +335,27 @@ export default function StocksPage() {
                           
                           <td className="px-6 py-4">
                             {editingId === item.id ? (
-                              <input
-                                type="number"
-                                value={editForm.quantity}
-                                onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
-                                min="0"
-                                step="0.01"
-                              />
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={editForm.quantity}
+                                  onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
+                                  className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                  min="0"
+                                  step="0.01"
+                                />
+                                <select
+                                  value={editForm.unit}
+                                  onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
+                                  className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                >
+                                  <option value="pcs">pcs</option>
+                                  <option value="meters">meters</option>
+                                  <option value="kg">kg</option>
+                                  <option value="liters">liters</option>
+                                  <option value="boxes">boxes</option>
+                                </select>
+                              </div>
                             ) : (
                               <div className="text-sm text-gray-900">
                                 {item.quantity} {item.unit}
@@ -400,7 +423,7 @@ export default function StocksPage() {
                                     <Edit size={16} />
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteStock(item.id)}
+                                    onClick={() => showDeleteConfirmation(item)}
                                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     title="Delete item"
                                   >
@@ -427,6 +450,53 @@ export default function StocksPage() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && stockToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete Stock Item</h3>
+                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                <p className="text-gray-800 text-sm mb-3">
+                  Are you sure you want to delete <strong>"{stockToDelete.product}"</strong> from your stock?
+                </p>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p>• Quantity: {stockToDelete.quantity} {stockToDelete.unit}</p>
+                  <p>• Unit Price: ₹{stockToDelete.costPrice}</p>
+                  <p>• Total Value: ₹{(stockToDelete.quantity * stockToDelete.costPrice).toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setStockToDelete(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-gray-600 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteStock}
+                  className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete Item
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
